@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id='ancon.sale_order_form' model='ir.ui.view'>
+            <field name='name'>ancon.sale.order.form</field>
+            <field name='model'>sale.order</field>
+            <field name='inherit_id' ref='sale.view_order_form'/>
+            <field name='arch' type='xml'>
+                <xpath expr="//field[@name='payment_term_id']" position='after'>
+                    <field name='first_payment_date' groups="ancon.sales_order_edit_first_payment_date"
+                        attrs="{'invisible': [('first_payment_date', '=', False)]}"/>
+                </xpath>
+            </field>
+        </record>
+        <record id='ancon.sale_order_states_form' model='ir.ui.view'>
+            <field name='name'>ancon.sale.order.states.form</field>
+            <field name='model'>sale.order</field>
+            <field name='inherit_id' ref='sale.view_order_form'/>
+            <field name='arch' type='xml'>
+                <xpath expr="//field[@name='state']" position='replace'>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,pending,approved,sent,sale"/>
+                </xpath>
+            </field>
+        </record>
+        <record id='ancon.sale_order_state_buttons_form' model='ir.ui.view'>
+            <field name='name'>ancon.sale.order.state.buttons.form</field>
+            <field name='model'>sale.order</field>
+            <field name='inherit_id' ref='sale.view_order_form'/>
+            <field name='arch' type='xml'>
+                <xpath expr="//button[@name='action_cancel']" position='after'>
+                    <button 
+                        name="action_quotation_send" string="Enviar por correo electrónico"
+                        type="object" states="approved" class="btn-primary"/>
+                    <button 
+                        name="print_quotation" string="Imprimir" type="object" 
+                        states="approved" class="o_sale_print"/>
+                    <button 
+                        name="action_confirm" id="action_confirm" string="Confirmar venta" 
+                        class="btn-primary" type="object" states="approved"/>
+                    <button 
+                        name="action_by_approve" string="SOLICITAR DESCUENTO" type="object" 
+                        states="draft" groups="ancon.sales_order_request_quotations" class="btn-primary" />
+                    <button 
+                        name="action_approve" string="APROBAR DESCUENTO" type="object"
+                        states="pending" groups="ancon.sales_order_approve_reject_quotations" class="btn-primary"/>
+                    <button 
+                        name="action_reject" string="RECHAZAR DESCUENTO" type="object" 
+                        states="pending" groups="ancon.sales_order_approve_reject_quotations" class="btn-primary" />
+                    <button name="action_cancel" states="approve,pending" type="object" string="Cancelar"/>
+                </xpath>
+            </field>
+        </record>
+        <record id='ancon.sale_order_custom_discount_notebook_form' model='ir.ui.view'>
+            <field name='name'>ancon.sale.order.custom.discount.notebook.form</field>
+            <field name='model'>sale.order</field>
+            <field name='inherit_id' ref='sale.view_order_form'/>
+            <field name='arch' type='xml'>
+                <xpath expr="/form/sheet/notebook/page/field[@name='order_line']/form/group/group/field[@name='price_unit']" position="after">
+                    <label for="custom_discount" string="Descuento" groups="ancon.account_invoice_line_custom_discount_user" />
+                    <div name="custom_discount" groups="ancon.account_invoice_line_custom_discount_user">
+                        <field name="custom_discount" class="oe_inline"/> %
+                    </div>
+                </xpath>
+            </field>
+        </record>
+        <record id='ancon.sale_order_custom_discount_field_form' model='ir.ui.view'>
+            <field name='name'>ancon.sale.order.custom.discount.field.form</field>
+            <field name='model'>sale.order</field>
+            <field name='inherit_id' ref='sale.view_order_form'/>
+            <field name='arch' type='xml'>
+                <xpath expr="/form/sheet/notebook/page/field[@name='order_line']/tree/field[@name='discount']" position="replace">
+                    <field name="custom_discount" groups="ancon.account_invoice_line_custom_discount_user"/>
+                </xpath>
+            </field>
+        </record>
+        <record id='ancon.ruc_filter_sale_order_filter' model='ir.ui.view'>
+            <field name='name'>ancon.ruc.filter.sale.order.filter</field>
+            <field name='model'>sale.order</field>
+            <field name='inherit_id' ref='sale.view_sales_order_filter'/>
+            <field name='arch' type='xml'>
+                <xpath expr="//field[@name='partner_id']" position='after'>
+                    <field name="partner_ruc"/>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>
