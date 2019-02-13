@@ -70,31 +70,10 @@ class FpiPrinter(models.Model):
     fpi_document_ids = fields.One2many(
         'fpi.document', 'printer_id', string='Documentos')
 
-    def _check_printer_assigned_exists(self, vals, pk=0):
-        """
-        Check if the printer is already assigned to the user selected before to create / write
-        """
-        if 'employee_id' in vals:
-            if pk > 0:
-                counter = self.env['fpi.printer'].search_count(
-                    [('employee_id', '=', vals['employee_id']), ('id', '!=', pk)])
-            else:
-                counter = self.env['fpi.printer'].search_count([('employee_id', '=', vals['employee_id'])])
-            if counter > 0:
-                raise ValidationError("El usuario seleccionado ya tiene una impresora asignada")
-
-
     @api.model
     def create(self, vals):
-        self._check_printer_assigned_exists(vals=vals)
         p = super(FpiPrinter, self).create(vals)
         p.user_id = self.write_uid.id
-        return p
-
-    @api.multi
-    def write(self, vals):
-        p = super(FpiPrinter, self).write(vals)
-        self._check_printer_assigned_exists(vals=vals, pk=self.id)
         return p
 
     @api.multi
@@ -112,10 +91,6 @@ class FpiDocument(models.Model):
         'fpi.printer',
         string='Impresora',
         required=True)
-    printer_user_id = fields.Many2one(
-        'res.users',
-        string='Impreso por',
-        default=None)
     print_status = fields.Selection(
         PRINT_STATUS_TYPES,
         string='Estatus de la impresión',

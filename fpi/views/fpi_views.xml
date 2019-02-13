@@ -115,7 +115,7 @@
                     <field name="invoice_type" string="Tipo de Factura"/>
                     <field name="serial"/>
                     <field name="write_date" string="Impreso el dia" />
-                    <field name="printer_user_id" string="Impreso por" />
+                    <field name="write_uid" string="Impreso por" />
                 </tree>
             </field>
         </record>
@@ -132,7 +132,7 @@
                             <p><strong>Tipo de Documento: </strong><field name="documents_type_printed"/></p>
                             <p><strong>Tipo de Factura: </strong><field name="invoice_type"/></p>
                             <p><strong>Enviado a impresión el: </strong><field name="write_date"/></p>
-                            <p><strong>Impreso por: </strong><field name="printer_user_id"/></p>
+                            <p><strong>Usuario: </strong><field name="write_uid"/></p>
                             <p><strong>Estatus de impresión: </strong><field name="print_status"/></p>
                             <p><strong>Impresora usada: </strong><field name="serial"/></p>
                         </group>
@@ -149,7 +149,7 @@
                     <field name='invoice_type'/>
                     <field name='serial'/>
                     <field name='print_status'/>
-                    <field name='printer_user_id'/>
+                    <field name='write_uid'/>
                     <field name='number'/>
                 </search>
             </field>
@@ -160,7 +160,7 @@
             <field name='view_type'>form</field>
             <field name='view_mode'>tree,search,form</field>
             <field name='view_id' ref='fpi.document_tree' />
-            <field name='domain'>[('print_status','=',['pending', 'in_progress', 'failed']), ('printer_user_id', '=', uid)]</field>
+            <field name='domain'>[('print_status','=',['pending', 'in_progress', 'failed']), ('write_uid', '=', uid)]</field>
         </record>
         <menuitem
             id="fpi.menu_root"

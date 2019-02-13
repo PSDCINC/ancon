@@ -9,6 +9,9 @@
 				<xpath expr="//field[@name='function']" position='before'>
 					<field name='ruc' style="width:170px!important;"/>
 					<field name='dv' style="width:50px!important;" />
+					<field name='sex'/>
+					<field name='birth_date'/>
+					<field name='age' readonly="1"/>
 				</xpath>
 			</field>
 		</record>

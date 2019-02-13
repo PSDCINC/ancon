@@ -28,7 +28,7 @@ class FpiApiDocumentsInProgressList(models.Model):
                 fpi_document FD
             INNER JOIN
                 res_users RU
-                ON RU.id = FD.printer_user_id
+                ON RU.id = FD.write_uid
             INNER JOIN
                 fpi_printer FP
                 ON FP.id = FD.printer_id

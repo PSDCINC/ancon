@@ -1,5 +1,24 @@
 # -*- coding: utf-8 -*-
 from odoo import models, fields, api
+import datetime
+from dateutil.relativedelta import relativedelta
+import logging
+_logger = logging.getLogger(__name__)
+
+
+SEX_TYPES = [
+	('Masculino',"Masculino"),
+	('Femenino',"Femenino"),
+]
+
+def calculate_age(_birth_date):
+	age = 0
+	current_date = datetime.date.today()
+	birth_date = datetime.datetime.strptime(_birth_date, '%Y-%m-%d').date()
+	born = relativedelta(current_date,birth_date).years
+	if born > 0:
+		age = born
+	return age
 
 
 class NeonetyCountry(models.Model):
@@ -170,13 +189,13 @@ class NeonetyPartner(models.Model):
 	    string='País',
 	    required=False,
 	    translate=True,
-	    default=174)
+	    default=lambda self: self._get_country_id())
 	country_id = fields.Many2one(
 	    'res.country',
 	    string='País',
 	    required=False,
 	    translate=True,
-	    default=174)
+	    default=lambda self: self._get_country_id())
 	province_id = fields.Many2one(
 	    'neonety.province',
 	    string='Distrito',
@@ -196,11 +215,47 @@ class NeonetyPartner(models.Model):
 	    string='Dirección',
 	    required=False,
 	    translate=True)
+	sex = fields.Selection(
+		SEX_TYPES,
+		string='Sexo',
+		required=False,
+		default=None)
+	birth_date = fields.Date(
+		string='Fecha de Nacimiento',
+		required=False,
+		default=None)
+	age = fields.Char(
+		string='Edad',
+		required=False,
+		compute='_calculate_age',
+		default='0')
+
+	@api.depends('birth_date')
+	def _calculate_age(self):
+		for record in self:
+			record.age = '0'
+			if record.birth_date:
+				born = calculate_age(_birth_date=record.birth_date)
+				if born > 0:
+					record.age = '{0} año(s) de edad'.format(born)
+
+	@api.onchange('birth_date')
+	def _onchange_birth_date(self):
+		self.age = '0'
+		if self.birth_date:
+			born = calculate_age(_birth_date=self.birth_date)
+			if born > 0:
+				self.age = '{0} año(s) de edad'.format(born)
+
+	@api.model
+	def _get_country_id(self):
+		self._cr.execute("SELECT id FROM res_country WHERE code LIKE 'PA' LIMIT 1")
+		country_id = self._cr.fetchone()
+		return country_id
 
 	@api.onchange('neonety_country_id')
 	def onchange_neonety_country_id(self):
 		res = {}
-
 		if self.neonety_country_id:
 			self._cr.execute('SELECT id, name FROM neonety_province WHERE country_id = %s', (self.neonety_country_id.id, ))
 			provinces = self._cr.fetchall()
@@ -222,7 +277,6 @@ class NeonetyPartner(models.Model):
 
 			for district in districts:
 				ids.append(district[0])
-			print ids
 			res['domain'] = {'district_id': [('id', 'in', ids)]}
 		return res
 

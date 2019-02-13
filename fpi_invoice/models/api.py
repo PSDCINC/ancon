@@ -82,7 +82,7 @@ class FpiApiInvoiceDocumentsPendingList(models.Model):
                 ON AI.id = FD.invoice_id
             INNER JOIN
                 res_users RU
-                ON RU.id = FD.printer_user_id
+                ON RU.id = FD.write_uid
             WHERE
                 FD.print_status LIKE 'pending'
                 AND FD.printer_id IS NOT NULL
@@ -151,7 +151,7 @@ class FpiApiInvoiceLineDocumentsPendingList(models.Model):
                 ON PT.id = PP.product_tmpl_id
             INNER JOIN
                 res_users RU
-                ON RU.id = FD.printer_user_id
+                ON RU.id = FD.write_uid
             LEFT JOIN
                 account_invoice_line_tax AILT
                 ON AILT.invoice_line_id = AIL.id

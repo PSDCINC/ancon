@@ -6,7 +6,7 @@
     'author': "Neonety",
     'website': "http://www.neonety.com",
     'category': 'Administration',
-    'version': '4.5.1',
+    'version': '4.4.0',
     'depends': ['base', 'neonety'],
     'data': [
         'security/security_data.xml',

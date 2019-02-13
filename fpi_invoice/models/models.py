@@ -36,7 +36,7 @@ class FpiDocument(models.Model):
     @api.multi
     def unlink(self):
         for document in self:
-            if 'in_progress' in document.print_status:
+            if 'in_progress' in self.print_status:
                 raise UserError(ErrorMessages.CANCEL_PRINTING_NOT_ALLOWED)
             else:
                 if 'account_invoice' in document.documents_type_printed:
@@ -60,10 +60,6 @@ class FpiInvoice(models.Model):
         string='Estatus de la impresión',
         required=False,
         default='incomplete')
-    printer_user_id = fields.Many2one(
-        'res.users',
-        string='Impreso por',
-        default=None)
     print_filename_assigned = fields.Char(
         string='Nombre de impresión asignado',
         required=False,
@@ -81,7 +77,6 @@ class FpiInvoice(models.Model):
     def create(self, vals):
         obj = super(FpiInvoice, self).create(vals)
         obj.fpi_document_id = None
-        obj.printer_user_id = None
         return obj
 
     @api.one
@@ -99,9 +94,6 @@ class FpiInvoice(models.Model):
                 if not printer:
                     raise UserError(ErrorMessages.PRINTER_NOT_ASSIGNED)
                 else:
-                    invoice = self
-                    invoice.write({
-                        'printer_user_id': self.write_uid.id})
                     parent_invoice_filename_assigned = None
                     parent_invoice_fiscal_printer_serial = None
                     parent_invoice_fiscal_invoice_number = 0
@@ -195,7 +187,7 @@ class FpiInvoice(models.Model):
                         'invoice_type': invoice_type,
                         'refund_date': refund_date,
                         'refund_time': refund_time,
-                        'number': self.number,
-                        'printer_user_id': self.write_uid.id})
+                        'number': self.number
+                    })
                     if new_printer_obj and 'pending' in new_printer_obj.print_status:
                         self.fpi_document_id = new_printer_obj.id

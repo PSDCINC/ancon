@@ -6,7 +6,7 @@
     'author': "Neonety",
     'website': "http://www.neonety.com",
     'category': 'Administration',
-    'version': '1.7.1',
+    'version': '1.6.1',
     'depends': ['base', 'account', 'account_invoicing', 'fpi'],
     'data': [
         'security/security_data.xml',
