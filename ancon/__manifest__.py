@@ -6,8 +6,8 @@
     'author': 'Neonety',
     'website': "http://www.neonety.com",
     'category': 'Sales',
-    'depends': ['base', 'contacts', 'product', 'account', 'sale', 'product_brand', 'neonety', 'fpi_invoice', 'purchase'],
-    'version': '1.9.0',
+    'depends': ['base', 'contacts', 'product', 'account', 'sale', 'product_brand', 'neonety', 'fpi_invoice', 'purchase', 'stock'],
+    'version': '1.10.0',
     'data': [
         'security/security.xml',
         'security/ir.model.access.csv',
@@ -23,7 +23,7 @@
         'views/sale_order_views.xml',
         'views/account_tax_views.xml',
         #'views/account_menuitem.xml', # comment before to deploy
-        #'views/account_invoice_supplier_views.xml', # comment before to deploy
+        'views/account_invoice_supplier_views.xml', # comment before to deploy
         'views/account_account_views.xml',
         'views/withholding_certificate_views.xml',
         'views/annex_report_views.xml',

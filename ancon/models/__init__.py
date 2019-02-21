@@ -15,3 +15,5 @@ from . import account
 from . import withholding_certificate
 from . import fpi_document
 from . import annex_reports
+from . import stock_quant
+from . import procurement

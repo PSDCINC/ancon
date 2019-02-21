@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
-from odoo import models, fields, api
-from odoo.exceptions import ValidationError
+from odoo import models, fields, api, _
+from odoo.exceptions import ValidationError, UserError
+from odoo.tools import float_compare
 from datetime import date, datetime, timedelta
 import logging
 _logger = logging.getLogger(__name__)
@@ -105,13 +106,11 @@ class SaleOrder(models.Model):
     @api.multi
     def print_quotation(self):
         self._check_order_available_to_send("Imprimir")
-        raise ValidationError("Error forzed")
         return super(SaleOrder, self).print_quotation()
 
     @api.multi
     def action_quotation_send(self):
         self._check_order_available_to_send("Enviar por correo")
-        raise ValidationError("Error forzed")
         return super (SaleOrder, self).action_quotation_send()
 
 
@@ -120,6 +119,25 @@ class SaleOrderLine(models.Model):
     custom_discount = fields.Float(
         string='Descuento',
         default=0.00)
+    stock_quant_id = fields.Many2one(
+        'stock.quant',
+        string='Existencia en almacenes')
+    procurement_group_id = fields.Many2one(
+        'procurement.group', 'Procurement Group', copy=False)
+
+    @api.depends('product_id')
+    @api.onchange('product_id')
+    def _onchange_stock_quant_id(self):
+        """
+        Method added to return the stock.quants objects list related with a product selected.
+        """
+        res = {}
+        if self.product_id:
+            res['domain'] = {'stock_quant_id': [
+                ('product_id', '=', self.product_id.id),
+                ('quantity', '>', 0)
+            ]}
+        return res
 
     @api.one
     @api.model
@@ -159,3 +177,102 @@ class SaleOrderLine(models.Model):
         res = super(SaleOrderLine, self)._prepare_invoice_line(qty)
         res['custom_discount'] = self.custom_discount
         return res
+
+    @api.onchange('product_uom_qty', 'product_uom', 'route_id')
+    def _onchange_product_id_check_availability(self):
+        """
+        Override default method _onchange_product_id_check_availability() to check the producs available on any warehouse.
+        """
+        if not self.product_id or not self.product_uom_qty or not self.product_uom:
+            self.product_packaging = False
+            return {}
+        if self.product_id.type == 'product':
+            precision = self.env['decimal.precision'].precision_get('Product Unit of Measure')
+            # START CODE fix to check the warehouse related with the sale.order.line selected.
+            sw = self.env['stock.warehouse'].search([('company_id', '=', self.stock_quant_id.location_id.company_id.id)], limit=1)
+            product = self.product_id.with_context(warehouse=sw.id)
+            # END CODE fix to check the warehouse related with the sale.order.line selected.
+            product_qty = self.product_uom._compute_quantity(self.product_uom_qty, self.product_id.uom_id)
+            if float_compare(product.virtual_available, product_qty, precision_digits=precision) == -1:
+                is_available = self._check_routing()
+                if not is_available:
+                    # START CODE fix to display the producs available by the sale.order.line and warehouse selected..
+                    message =  _('You plan to sell %s %s but you only have %s %s available in %s warehouse.') % \
+                            (self.product_uom_qty, self.product_uom.name, product.virtual_available, product.uom_id.name, sw.name)
+                    # END CODE fix to display the producs available by the sale.order.line and warehouse selected..
+                    if float_compare(product.virtual_available, self.product_id.virtual_available, precision_digits=precision) == -1:
+                        message += _('\nThere are %s %s available accross all warehouses.') % \
+                                (self.product_id.virtual_available, product.uom_id.name)
+                    warning_mess = {
+                        'title': _('Not enough inventory!'),
+                        'message' : message
+                    }
+                    return {'warning': warning_mess}
+        return {}
+
+    @api.multi
+    def _action_launch_procurement_rule(self):
+        """
+        Override the default method _action_launch_procurement_rule() adjusting the logic
+        to generate group_id depending from the warehouse used on each sale.order.line.
+        file found:
+        sale_stock/models/sale_order.py > SaleOrderLine > _action_launch_procurement_rule() (Line: 225)
+        """
+        precision = self.env['decimal.precision'].precision_get('Product Unit of Measure')
+        errors = []
+        for line in self:
+            if line.state != 'sale' or not line.product_id.type in ('consu','product'):
+                continue
+            qty = 0.0
+            for move in line.move_ids.filtered(lambda r: r.state != 'cancel'):
+                qty += move.product_uom._compute_quantity(move.product_uom_qty, line.product_uom, rounding_method='HALF-UP')
+            if float_compare(qty, line.product_uom_qty, precision_digits=precision) >= 0:
+                continue
+            ### START CODE multiple warehouses on the same sale.order
+            company_id = line.stock_quant_id.location_id.company_id.id or False
+            if company_id:
+                group_id = self.env['procurement.group'].search([
+                    ('stock_warehouse_id.company_id', '=', company_id), ('sale_id', '=', line.order_id.id)], limit=1)
+                if not group_id:
+                    sw = self.env['stock.warehouse'].search([('company_id', '=', company_id)], limit=1)
+                    group_values = {
+                        'name': line.order_id.name,
+                        'move_type': line.order_id.picking_policy,
+                        'sale_id': line.order_id.id,
+                        'partner_id': line.order_id.partner_shipping_id.id,
+                        'stock_warehouse_id': sw.id}
+                    group_id = self.env['procurement.group'].create(group_values)
+                else:
+                    updated_vals = {}
+                    if group_id.partner_id != line.order_id.partner_shipping_id:
+                        updated_vals.update({'partner_id': line.order_id.partner_shipping_id.id})
+                    if group_id.move_type != line.order_id.picking_policy:
+                        updated_vals.update({'move_type': line.order_id.picking_policy})
+                    if updated_vals:
+                        group_id.write(updated_vals)
+                ### END CODE multiple warehouses on the same sale.order
+                values = line._prepare_procurement_values(group_id=group_id)
+                product_qty = line.product_uom_qty - qty
+                procurement_uom = line.product_uom
+                quant_uom = line.product_id.uom_id
+                get_param = self.env['ir.config_parameter'].sudo().get_param
+                if procurement_uom.id != quant_uom.id and get_param('stock.propagate_uom') != '1':
+                    product_qty = line.product_uom._compute_quantity(product_qty, quant_uom, rounding_method='HALF-UP')
+                    procurement_uom = quant_uom
+                try:
+                    self.env['procurement.group'].run(line.product_id, product_qty, procurement_uom, line.order_id.partner_shipping_id.property_stock_customer, line.name, line.order_id.name, values)
+                    line.write({'procurement_group_id': group_id.id})
+                except UserError as error:
+                    errors.append(error.name)
+        if errors:
+            raise UserError('\n'.join(errors))
+        # START CODE update the location and company info to each stock.picking related with the line.procurement.group.id
+        for line in self:
+            if line.procurement_group_id:
+                sp = self.env['stock.picking'].search([('group_id', '=', line.procurement_group_id.id), ('sale_id', '=', line.order_id.id)])
+                sp.write({
+                    'location_id': line.procurement_group_id.stock_warehouse_id.lot_stock_id.id,
+                    'company_id': line.procurement_group_id.stock_warehouse_id.company_id.id
+                    })
+        # END CODE update the location and company info to each stock.picking related with the line.procurement.group.id
+        return True
